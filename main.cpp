@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     curl = curl_easy_init();
     if(curl) {
         // Replace  with a known working URL
-        curl_easy_setopt(curl, CURLOPT_URL, "http://api.openweathermap.org/geo/1.0/direct?q=Kathmandu&limit=5&appid=c75997502cfcd1b939260acf6e491ec4");
+        curl_easy_setopt(curl, CURLOPT_URL, "http://api.openweathermap.org/geo/1.0/direct?q=Kathmandu&limit=5&appid=");
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
 
