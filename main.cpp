@@ -6,13 +6,17 @@
 #include <curl/curl.h>
 #include <string>
 #include <cstring>
+#include <QDateTime>
+#include <QTimeZone>
 
 
-QByteArray response(char []);
-void temperature(QJsonDocument);
-void weather(QJsonDocument);
-QString lat(QJsonDocument);
-QString lon(QJsonDocument);
+QByteArray response(char []);           // Function to Call API
+void sun_time(QJsonDocument);           // Function to Extract Sunrise and SunSet From Current Weather API
+void temperature(QJsonDocument);        // Function to Extract Temperature From Current Weather API
+void weather(QJsonDocument);            // Function to Extract Weather Informatrion From Current Weather API
+QString lat(QJsonDocument);             // Function to Extract Latitude
+QString lon(QJsonDocument);             // Function to Extract Longitude
+
 
 
 // Function to write curl data into a QByteArray
@@ -30,7 +34,7 @@ int main(int argc, char *argv[])
 
     char url[150] = "http://api.openweathermap.org/geo/1.0/direct?q=Kathmandu&limit=5&appid=";
 
-    QByteArray responseData = response(url);
+    QByteArray responseData = response(url);            //Fetching the Data
 
     // Check if data was fetched
     if(responseData.isEmpty()) {
@@ -41,8 +45,9 @@ int main(int argc, char *argv[])
     // Trim any leading/trailing whitespace
     responseData = responseData.trimmed();
 
-    // Parse the JSON data
     QJsonParseError error;
+
+    // Parse the JSON data
     QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &error);
 
     if (error.error != QJsonParseError::NoError) {
@@ -50,39 +55,69 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    //Getting Latitude and Longitude
+    // Getting Latitude and Longitude
     QString latitude = lat(jsonDoc);
     QString longitude = lon(jsonDoc);
 
+    // Current Weather
     std::string string_weather_url = "https://api.openweathermap.org/data/2.5/weather?lat="+latitude.toStdString()+"&lon="+longitude.toStdString()+"&appid=c75997502cfcd1b939260acf6e491ec4";
     char char_weather_url[150];
-    //Converting std::string to char type
+
+    // Converting std::string to char type
     strcpy(char_weather_url, string_weather_url.c_str());
 
-    //Function Call
+    // Function Call
     QByteArray responsedata = response(char_weather_url);
 
-    //Trim any leading/trailing whitespace
+    // Trim any leading/trailing whitespace
     responsedata = responsedata.trimmed();
 
-    //Parsing the JSON Data
+    // Parsing the JSON Data
     QJsonDocument jsonDoc1 = QJsonDocument::fromJson(responsedata, &error);
+
     if (error.error != QJsonParseError::NoError) {
         qWarning() << "Error parsing JSON:" << error.errorString();
         return -1;
     }
 
-    //Function Call
+    // Function Call
     weather(jsonDoc1);
     temperature(jsonDoc1);
+    sun_time(jsonDoc1);
 
     return a.exec();
 }
 
 
+void sun_time(QJsonDocument jsonDoc)
+{
+    QJsonParseError jsonError;
+    if (jsonError.error != QJsonParseError::NoError) {
+        qDebug() << "Error parsing Json:" << jsonError.errorString();
+        return;
+    }
+
+    if(!jsonDoc.isObject()) {
+        qDebug() << "JSON is not an object.";
+    }
+
+    QJsonObject jsonObj = jsonDoc.object();
+    QJsonObject sun = jsonObj["sys"].toObject();
+    qDebug() << sun;
+
+    int sunrise = sun["sunrise"].toInteger();
+    qDebug() << "Sunrise in UNIX Code: " << sunrise << "\n";
+
+    int sunset = sun["sunset"].toInteger();
+    qDebug() << "Sunset in UNIX Code: " << sunset << "\n";
+
+    //Converting UNIX Code to real time/date
+}
+
+
 void temperature(QJsonDocument jsonDoc) //get's temperature info
 {
-    //Checking for Error
+    // Checking for Error
     QJsonParseError jsonError;
     if (jsonError.error != QJsonParseError::NoError) {
         qDebug() << "Error parsing JSON:" << jsonError.errorString();
@@ -99,7 +134,7 @@ void temperature(QJsonDocument jsonDoc) //get's temperature info
     qDebug() << temp;
 
     double temperature = temp["temp"].toDouble();
-    qDebug() << "Temperature: " << temperature;
+    qDebug() << "Temperature: " << temperature << "\n";
 }
 
 
@@ -119,14 +154,20 @@ void weather(QJsonDocument jsonDoc) // get's weather info
     qDebug()<<jsonDoc<<"\n";
     QJsonObject jsonObj = jsonDoc.object();
 
-    //Exctracting the Weather:
+    // Exctracting the Weather:
     QJsonArray Weather = jsonObj["weather"].toArray();
 
     qDebug()<<Weather;
 
     QJsonObject weather_data = Weather[0].toObject();
+
+    // Extracting specific information:
     QString description = weather_data["description"].toString();
-    qDebug() <<"Description: "<<description << "\n";
+    qDebug() << "Description: " << description;
+
+    QString main_weather = weather_data["main"].toString();
+    qDebug() << "Main: " << main_weather << "\n";
+
     return;
 }
 
@@ -134,11 +175,13 @@ void weather(QJsonDocument jsonDoc) // get's weather info
 QString lat(QJsonDocument jsonDoc) // get's latitude
 {
     QString result;
+
     if (jsonDoc.isArray()) {
         QJsonArray jsonArray = jsonDoc.array();
 
         //Parsing the JSON to Object
         QJsonObject obj = jsonArray[0].toObject();
+
         if(obj.contains("lat")) //finding the latitude of the given city name
         {
             QJsonValue latvalue = obj.value("lat");
@@ -147,11 +190,13 @@ QString lat(QJsonDocument jsonDoc) // get's latitude
             result =  QString::number(lat,'f',8);
             qDebug() << result;
         }
+
         qDebug() << "\n";
     }
     else {
         qDebug() << "Failed to create JSON doc.";
     }
+
     return result;
 }
 
@@ -159,12 +204,14 @@ QString lat(QJsonDocument jsonDoc) // get's latitude
 QString lon(QJsonDocument jsonDoc) // get's longitude
 {
     QString result;
+
     if (jsonDoc.isArray())
     {
         QJsonArray jsonArray = jsonDoc.array();
 
         //Parsing the JSON to Object
         QJsonObject obj = jsonArray[0].toObject();
+
         if(obj.contains("lon")) //finding the latitude of the given city name
         {
             QJsonValue lonvalue = obj.value("lon");
@@ -173,12 +220,14 @@ QString lon(QJsonDocument jsonDoc) // get's longitude
            result = QString::number(lon, 'f', 8);
             qDebug() << result;
         }
+
         qDebug()<<"\n";
     }
     else
     {
         qDebug() << "Failed to create JSON doc.";
     }
+
     return result;
 }
 
@@ -188,8 +237,10 @@ QByteArray response(char url[]) //Fetching the API
     CURL* curl;
     CURLcode res;
     QByteArray responseData;
+
     curl_global_init(CURL_GLOBAL_DEFAULT);
     curl = curl_easy_init();
+
     if(curl) {
         // Replace  with a known working URL
         curl_easy_setopt(curl, CURLOPT_URL, url);                       //sets the URL to fetch
@@ -206,7 +257,8 @@ QByteArray response(char url[]) //Fetching the API
             qDebug() << "Data fetched successfully.";
 
         curl_easy_cleanup(curl);
-    } else {
+    }
+    else {
         qDebug() << "Failed to initialize curl."; //error checking
     }
 
